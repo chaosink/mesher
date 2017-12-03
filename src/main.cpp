@@ -15,7 +15,7 @@ int main(int argc, char *argv[]) {
 	mesh.LoadEuler(argv[1]);
 	mesh.SaveEuler("save.euler");
 	mesh.Build();
-	mesh.SaveFace();
+	mesh.PrintFace();
 
 	return 0;
 }

@@ -2,7 +2,6 @@
 
 #include <fstream>
 #include <string>
-#include <iostream>
 
 namespace mesher {
 
@@ -13,9 +12,9 @@ void Mesher::LoadEuler(const char *file) {
 	int n0, n1, n2;
 
 	while(ifs >> euler) {
-		if(euler[0] == '#')
+		if(euler[0] == '#') {
 			ifs.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-		if(euler == "Mvfs") {
+		} else if(euler == "Mvfs") {
 			ifs >> x >> y >> z;
 			euler_.push_back(new EulerMvfs(x, y, z));
 		} else if(euler == "Mve") {
@@ -40,7 +39,7 @@ void Mesher::SaveEuler(const char *file) {
 	FILE *f = fopen(file, "w");
 
 	for(auto euler: euler_) {
-		switch(euler->name) {
+		switch(euler->op) {
 			case Euler_Mvfs: {
 				auto e = static_cast<EulerMvfs*>(euler);
 				fprintf(f, "Mvfs %f %f %f\n", e->p.x, e->p.y, e->p.z);
@@ -194,29 +193,31 @@ void Mesher::KfMrh(Face *f) {
 }
 
 void Mesher::Build() {
-	for(auto euler: euler_) {
-		switch(euler->name) {
+	for(unsigned int i = 0; i < euler_.size(); i++) {
+		// printf("o%02d\n", i);
+		switch(euler_[i]->op) {
 			case Euler_Mvfs: {
-				auto e = static_cast<EulerMvfs*>(euler);
+				auto e = static_cast<EulerMvfs*>(euler_[i]);
 				Mvfs(e->p);
 				break;
 			}
 			case Euler_Mve: {
-				auto e = static_cast<EulerMve*>(euler);
+				auto e = static_cast<EulerMve*>(euler_[i]);
 				Mve(e->p, vertex_[e->v0], face_[e->f]);
-				break;}
+				break;
+			}
 			case Euler_Mef: {
-				auto e = static_cast<EulerMef*>(euler);
+				auto e = static_cast<EulerMef*>(euler_[i]);
 				Mef(vertex_[e->v0], vertex_[e->v1], face_[e->f0]);
 				break;
 			}
 			case Euler_KeMr: {
-				auto e = static_cast<EulerKeMr*>(euler);
+				auto e = static_cast<EulerKeMr*>(euler_[i]);
 				KeMr(edge_[e->e], face_[e->f]);
 				break;
 			}
 			case Euler_KfMrh: {
-				// auto e = static_cast<EulerKfMrh*>(euler);
+				// auto e = static_cast<EulerKfMrh*>(euler_[i]);
 				// KfMrh(e->p);
 				break;
 			}
@@ -224,17 +225,23 @@ void Mesher::Build() {
 	}
 }
 
-void Mesher::SaveFace() {
-	for(auto face: face_) {
+void Mesher::PrintFace() {
+	Face *face;
+	for(unsigned int f_i = 0; f_i < face_.size(); f_i++) {
+		face = face_[f_i];
 		Loop *l = face->loop;
+		int l_i = 0;
 		do {
 			HalfEdge *he = l->half_edge;
+			int he_i = 0;
 			do {
 				glm::vec3 &v =  he->vertex->position;
-				std::cout << v.x << " " << v.y << " " << v.z << std::endl;
+				printf("f%d l%d he%d: %g %g %g\n", f_i, l_i, he_i, v.x, v.y, v.z);
 				he = he->next;
+				he_i++;
 			} while(he != l->half_edge);
 			l = l->next;
+			l_i++;
 		} while(l != face->loop);
 	}
 }

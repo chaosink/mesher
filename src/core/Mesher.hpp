@@ -6,42 +6,42 @@
 
 namespace mesher {
 
-enum EulerName : unsigned char {
+enum EulerOp : unsigned char {
 	Euler_Mvfs,
 	Euler_Mve,
 	Euler_Mef,
 	Euler_KeMr,
 	Euler_KfMrh,
 };
-struct Euler {
-	EulerName name;
-	Euler(EulerName name) : name(name) {}
+struct EulerBase {
+	EulerOp op;
+	EulerBase(EulerOp op) : op(op) {}
 };
-struct EulerMvfs : public Euler {
+struct EulerMvfs : public EulerBase {
 	glm::vec3 p;
 	EulerMvfs(float x, float y, float z)
-		: Euler(Euler_Mvfs), p(x, y, z) {}
+		: EulerBase(Euler_Mvfs), p(x, y, z) {}
 };
-struct EulerMve : public Euler {
+struct EulerMve : public EulerBase {
 	glm::vec3 p;
 	int v0, f;
 	EulerMve(float x, float y, float z, int v0, int f)
-		: Euler(Euler_Mve), p(x, y, z), v0(v0), f(f) {}
+		: EulerBase(Euler_Mve), p(x, y, z), v0(v0), f(f) {}
 };
-struct EulerMef : public Euler {
+struct EulerMef : public EulerBase {
 	int v0, v1, f0;
 	EulerMef(int v0, int v1, int f0)
-		: Euler(Euler_Mef), v0(v0), v1(v1), f0(f0) {}
+		: EulerBase(Euler_Mef), v0(v0), v1(v1), f0(f0) {}
 };
-struct EulerKeMr : public Euler {
+struct EulerKeMr : public EulerBase {
 	int e, f;
 	EulerKeMr(int e, int f)
-		: Euler(Euler_KeMr), e(e), f(f) {}
+		: EulerBase(Euler_KeMr), e(e), f(f) {}
 };
-struct EulerKfMrh : public Euler {
+struct EulerKfMrh : public EulerBase {
 	glm::vec3 p;
 	EulerKfMrh()
-		: Euler(Euler_KfMrh) {}
+		: EulerBase(Euler_KfMrh) {}
 };
 
 struct Face;
@@ -102,7 +102,7 @@ struct Vertex {
 };
 
 class Mesher {
-	std::vector<Euler*> euler_;
+	std::vector<EulerBase*> euler_;
 
 	std::vector<Solid*> solid_;
 	std::vector<Face*> face_;
@@ -116,10 +116,10 @@ class Mesher {
 	void KfMrh(Face *f);
 
 public:
-	void SaveFace();
 	void LoadEuler(const char *file);
 	void SaveEuler(const char *file);
 	void Build();
+	void PrintFace();
 };
 
 }
