@@ -1,62 +1,50 @@
-#version 330 core
+#version 450 core
 
-// Interpolated values from the vertex shaders
-in vec2 UV;
-in vec3 Position_worldspace;
-in vec3 Normal_cameraspace;
-in vec3 EyeDirection_cameraspace;
-in vec3 LightDirection_cameraspace;
+in Attribute {
+	vec3 position;
+	vec3 normal;
+} vertexIn;
 
-// Ouput data
+uniform mat4 mv;
+
 out vec3 color;
 
-// Values that stay constant for the whole mesh.
-uniform sampler2D myTextureSampler;
-uniform mat4 MV;
-uniform vec3 LightPosition_worldspace;
+vec3 Lighting(vec3 light_position, float LightPower, int light_n) {
+	vec3 LightColor = vec3(1.f, 1.f, 1.f);
 
-void main(){
+	vec3 MaterialDiffuseColor = vec3(0.9f, 0.3f, 0.3f);
+	vec3 MaterialAmbientColor = vec3(0.4f, 0.4f, 0.4f) * MaterialDiffuseColor;
+	vec3 MaterialSpecularColor = vec3(0.3f, 0.3f, 0.3f);
 
-	// Light emission properties
-	// You probably want to put them as uniforms
-	vec3 LightColor = vec3(1,1,1);
-	float LightPower = 50.0f;
-	
-	// Material properties
-	vec3 MaterialDiffuseColor = texture2D( myTextureSampler, UV ).rgb;
-	vec3 MaterialAmbientColor = vec3(0.1,0.1,0.1) * MaterialDiffuseColor;
-	vec3 MaterialSpecularColor = vec3(0.3,0.3,0.3);
+	vec3 light_direction = light_position - vertexIn.position;
+	float distance = length(light_direction);
 
-	// Distance to the light
-	float distance = length( LightPosition_worldspace - Position_worldspace );
+	vec3 n = normalize(vertexIn.normal);
+	vec3 l = normalize(light_direction);
+	float cosTheta = clamp(dot(n, l), 0.f, 1.f);
 
-	// Normal of the computed fragment, in camera space
-	vec3 n = normalize( Normal_cameraspace );
-	// Direction of the light (from the fragment to the light)
-	vec3 l = normalize( LightDirection_cameraspace );
-	// Cosine of the angle between the normal and the light direction, 
-	// clamped above 0
-	//  - light is at the vertical of the triangle -> 1
-	//  - light is perpendicular to the triangle -> 0
-	//  - light is behind the triangle -> 0
-	float cosTheta = clamp( dot( n,l ), 0,1 );
-	
-	// Eye vector (towards the camera)
-	vec3 E = normalize(EyeDirection_cameraspace);
-	// Direction in which the triangle reflects the light
-	vec3 R = reflect(-l,n);
-	// Cosine of the angle between the Eye vector and the Reflect vector,
-	// clamped to 0
-	//  - Looking into the reflection -> 1
-	//  - Looking elsewhere -> < 1
-	float cosAlpha = clamp( dot( E,R ), 0,1 );
-	
-	color = 
-		// Ambient : simulates indirect lighting
-		MaterialAmbientColor +
-		// Diffuse : "color" of the object
-		MaterialDiffuseColor * LightColor * LightPower * cosTheta / (distance*distance) +
-		// Specular : reflective highlight, like a mirror
-		MaterialSpecularColor * LightColor * LightPower * pow(cosAlpha,5) / (distance*distance);
+	vec3 E = normalize(-vertexIn.position);
+	vec3 R = reflect(-l, n);
+	float cosAlpha = clamp(dot(E, R), 0.f, 1.f);
 
+	color =
+		MaterialAmbientColor / light_n +
+		MaterialDiffuseColor * LightColor * LightPower * cosTheta / (distance * distance) +
+		MaterialSpecularColor * LightColor * LightPower * pow(cosAlpha, 5.f) / (distance * distance);
+
+	return color;
+}
+
+void main() {
+	vec3 light_position_0 = (mv * vec4( 20.f, 20.f, 10.f, 1.f)).xyz;
+	vec3 light_position_1 = (mv * vec4(-20.f, 10.f,-10.f, 1.f)).xyz;
+
+	vec3 c = vec3(0.f);
+
+	c += Lighting(light_position_0, 40.f, 2);
+	c += Lighting(light_position_1, 30.f, 2);
+	// c = vec4(1.f, 1.f, 1.f, 1.f);
+	// c = vertexIn.normal;
+
+	color = c;
 }

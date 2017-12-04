@@ -348,17 +348,30 @@ void TessVertexCallback(void *data) {
 std::vector<glm::vec3> triangle_vertex;
 void TessEndCallback() {
 	if(primitive_type == GL_TRIANGLE_FAN) {
-		for(unsigned int i = 1; i < vertex_temp.size(); i += 2) {
+		for(unsigned int i = 1; i < vertex_temp.size() - 1; i++) {
 			triangle_vertex.push_back(vertex_temp[0]);
 			triangle_vertex.push_back(vertex_temp[i]);
 			triangle_vertex.push_back(vertex_temp[i + 1]);
 		}
 	} else if(primitive_type == GL_TRIANGLE_STRIP) {
-		for(unsigned int i = 0; i < vertex_temp.size() - 2; i++) {
-			triangle_vertex.push_back(vertex_temp[i + 0]);
-			triangle_vertex.push_back(vertex_temp[i + 1]);
-			triangle_vertex.push_back(vertex_temp[i + 2]);
-		}
+		triangle_vertex.push_back(vertex_temp[0]);
+		triangle_vertex.push_back(vertex_temp[1]);
+		triangle_vertex.push_back(vertex_temp[2]);
+		glm::vec3 v = glm::cross(
+			vertex_temp[2] - vertex_temp[1],
+			vertex_temp[1] - vertex_temp[0]);
+		for(unsigned int i = 1; i < vertex_temp.size() - 2; i++)
+			if(glm::dot(v, glm::cross(
+				vertex_temp[i + 2] - vertex_temp[i + 1],
+				vertex_temp[i + 1] - vertex_temp[i + 0])) > 0) {
+				triangle_vertex.push_back(vertex_temp[i + 0]);
+				triangle_vertex.push_back(vertex_temp[i + 1]);
+				triangle_vertex.push_back(vertex_temp[i + 2]);
+			} else {
+				triangle_vertex.push_back(vertex_temp[i + 0]);
+				triangle_vertex.push_back(vertex_temp[i + 2]);
+				triangle_vertex.push_back(vertex_temp[i + 1]);
+			}
 	} else {
 		triangle_vertex += vertex_temp;
 	}
@@ -402,8 +415,8 @@ std::vector<glm::vec3> &Mesher::Triangulate() {
 		triangel_normal_[i + 0] =
 		triangel_normal_[i + 1] =
 		triangel_normal_[i + 2] = glm::normalize(glm::cross(
-			triangel_vertex_[i + 2] - triangel_vertex_[i + 1],
-			triangel_vertex_[i + 1] - triangel_vertex_[i + 0]));
+			triangel_vertex_[i + 1] - triangel_vertex_[i + 0],
+			triangel_vertex_[i + 2] - triangel_vertex_[i + 1]));
 
 	return triangel_vertex_;
 }

@@ -23,6 +23,10 @@ add_library(core
 
 add_executable(mesher
 	src/main.cpp
+	src/utility/Camera.cpp
+	src/utility/FPS.cpp
+	src/utility/Toggle.cpp
+	src/utility/OGL.cpp
 )
 target_link_libraries(mesher
 	core
