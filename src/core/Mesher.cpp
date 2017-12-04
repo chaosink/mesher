@@ -5,6 +5,49 @@
 #include <iostream>
 using namespace std;
 
+#include "mapbox/earcut.hpp"
+
+#define D cout << "here" << endl;
+
+namespace mapbox {
+namespace util {
+template <>
+struct nth<0, glm::vec3> {
+	inline static auto get(const glm::vec3 &t) {
+		return t.x;
+	};
+};
+template <>
+struct nth<1, glm::vec3> {
+	inline static auto get(const glm::vec3 &t) {
+		return t.y;
+	};
+};
+template <>
+struct nth<2, glm::vec3> {
+	inline static auto get(const glm::vec3 &t) {
+		return t.z;
+	};
+};
+} // namespace util
+} // namespace mapbox
+
+template <typename T>
+std::vector<T> operator+(const std::vector<T> &v0, const std::vector<T> &v1) {
+	std::vector<T> v;
+	v.reserve(v0.size() + v1.size());
+	v.insert(v.end(), v0.begin(), v0.end());
+	v.insert(v.end(), v1.begin(), v1.end());
+	return v;
+}
+
+template <typename T>
+std::vector<T> &operator+=(std::vector<T> &v0, const std::vector<T> &v1) {
+	v0.reserve(v0.size() + v1.size());
+	v0.insert(v0.end(), v1.begin(), v1.end());
+	return v0;
+}
+
 namespace mesher {
 
 void Mesher::LoadOperator(const char *file) {
@@ -31,8 +74,8 @@ void Mesher::LoadOperator(const char *file) {
 		} else if(op == "KfMrh") {
 
 		} else if(op == "Sweep") {
-			ifs >> x >> y >> z >> t;
-			operator_.push_back(new OpSweep(x, y, z, t));
+			ifs >> n0 >> x >> y >> z >> t;
+			operator_.push_back(new OpSweep(n0, x, y, z, t));
 		}
 	}
 
@@ -65,12 +108,12 @@ void Mesher::SaveOperator(const char *file) {
 			}
 			case Euler_KfMrh: {
 				auto o = static_cast<EulerKfMrh*>(op);
-				fprintf(f, "KfMrh %f %f %f\n", o->p.x, o->p.y, o->p.z);
+				fprintf(f, "KfMrh %d %d\n", o->f0, o->f1);
 				break;
 			}
 			case Op_Sweep: {
 				auto o = static_cast<OpSweep*>(op);
-				fprintf(f, "Sweep %f %f %f %f\n", o->d.x, o->d.y, o->d.z, o->t);
+				fprintf(f, "Sweep %d %f %f %f %f\n", o->f, o->d.x, o->d.y, o->d.z, o->t);
 				break;
 			}
 		}
@@ -79,7 +122,7 @@ void Mesher::SaveOperator(const char *file) {
 	fclose(f);
 }
 
-bool Mesher::InLoop(Vertex *v, Loop *l) {
+bool Mesher::InLoop(int v, Loop *l) {
 	HalfEdge *he = l->half_edge;
 	if(!he) return false;
 	do {
@@ -89,35 +132,54 @@ bool Mesher::InLoop(Vertex *v, Loop *l) {
 	return false;
 }
 
+void Mesher::AddLoop(int f, Loop *l1) {
+	Loop *l0 = face_[f]->loop;
+
+	l1->next = l0->next;
+	l1->prev = l0;
+	l0->next->prev = l1;
+	l0->next = l1;
+}
+
+void Mesher::SetLoop(HalfEdge *he, Loop *l) {
+	do {
+		he->loop = l;
+		he = he->next;
+	} while(he != l->half_edge);
+}
+
 void Mesher::Mvfs(glm::vec3 p) {
 	solid_.push_back(new Solid);
 	face_.push_back(new Face);
 	vertex_.push_back(new Vertex(p));
-	Solid *s = solid_.back();
-	Face *f = face_.back();
+	Solid *s_p = solid_.back();
+	int s = solid_.size() - 1;
+	Face *f_p = face_.back();
+	int f = face_.size() - 1;
 
 	Loop *l = new Loop(f);
 
-	s->face = f;
+	s_p->face = f;
 
-	f->solid = s;
-	f->loop = l;
+	f_p->solid = s;
+	f_p->loop = l;
 
 	l->prev = l->next = l;
 	l->face = f;
 	l->half_edge = nullptr;
 }
 
-Vertex *Mesher::Mve(glm::vec3 p, Vertex *v0, Loop *l) {
+int Mesher::Mve(glm::vec3 p, int v0, Loop *l) {
 	edge_.push_back(new Edge);
 	vertex_.push_back(new Vertex(p));
-	Edge *e = edge_.back();
-	Vertex *v1 = vertex_.back();
+	Edge *e_p = edge_.back();
+	int e = edge_.size() - 1;
+	int v1 = vertex_.size() - 1;
 
 	HalfEdge *he0 = new HalfEdge(e, v0), *he1 = new HalfEdge(e, v1);
 
-	e->half_edge[0] = he0;
-	e->half_edge[1] = he1;
+	e_p->half_edge[0] = he0;
+	e_p->half_edge[1] = he1;
 
 	he0->loop = he1->loop = l;
 	he0->twin = he1;
@@ -141,29 +203,31 @@ Vertex *Mesher::Mve(glm::vec3 p, Vertex *v0, Loop *l) {
 	return v1;
 }
 
-Vertex *Mesher::Mve(glm::vec3 p, Vertex *v0, Face *f) {
-	Loop *l = f->loop;
+int Mesher::Mve(glm::vec3 p, int v0, int f) {
+	Loop *l = face_[f]->loop;
 	do {
 		if(InLoop(v0, l)) break;
 		l = l->next;
-	} while(l != f->loop);
-	Mve(p, v0, l);
+	} while(l != face_[f]->loop);
+	return Mve(p, v0, l);
 }
 
-void Mesher::Mef(Vertex *v0, Vertex *v1, Loop *l0) {
+void Mesher::Mef(int v0, int v1, Loop *l0) {
 	face_.push_back(new Face);
 	edge_.push_back(new Edge);
-	Face *f1 = face_.back();
-	Edge *e = edge_.back();
+	Face *f1_p = face_.back();
+	int f1 = face_.size() - 1;
+	Edge *e_p = edge_.back();
+	int e = edge_.size() - 1;
 
 	Loop *l1 = new Loop(f1);
 	HalfEdge *he0 = new HalfEdge(e, v0), *he1 = new HalfEdge(e, v1);
 
-	f1->solid = l0->face->solid;
-	f1->loop = l1;
+	f1_p->solid = face_[l0->face]->solid;
+	f1_p->loop = l1;
 
-	e->half_edge[0] = he0;
-	e->half_edge[1] = he1;
+	e_p->half_edge[0] = he0;
+	e_p->half_edge[1] = he1;
 
 	he0->loop = l0;
 	he1->loop = l1;
@@ -188,28 +252,27 @@ void Mesher::Mef(Vertex *v0, Vertex *v1, Loop *l0) {
 
 	l0->half_edge = he0;
 	l1->half_edge = he1;
+
+	SetLoop(he1, l1);
 }
 
-void Mesher::Mef(Vertex *v0, Vertex *v1, Face *f0) {
-	Loop *l0 = f0->loop;
+void Mesher::Mef(int v0, int v1, int f0) {
+	Loop *l0 = face_[f0]->loop;
 	do {
 		if(InLoop(v0, l0)) break;
 		l0 = l0->next;
-	} while(l0 != f0->loop);
+	} while(l0 != face_[f0]->loop);
 	Mef(v0, v1, l0);
 }
 
-void Mesher::KeMr(Edge *&e, Face *f) {
+void Mesher::KeMr(int e, int f) {
 	Loop *l1 = new Loop(f);
 
-	Loop *l0 = f->loop;
+	Loop *l0 = face_[f]->loop;
 
-	l1->next = l0->next;
-	l1->prev = l0;
-	l0->next->prev = l1;
-	l0->next = l1;
+	AddLoop(f, l1);
 
-	HalfEdge *he0 = e->half_edge[0], *he1 = e->half_edge[1];
+	HalfEdge *he0 = edge_[e]->half_edge[0], *he1 = edge_[e]->half_edge[1];
 
 	he0->prev->next = he1->next;
 	he1->next->prev = he0->prev;
@@ -220,90 +283,146 @@ void Mesher::KeMr(Edge *&e, Face *f) {
 	l0->half_edge = he0->prev; // outer loop
 	l1->half_edge = he1->prev; // inner loop
 
-	delete e->half_edge[0];
-	delete e->half_edge[1];
-	delete e; // edge memory deleted, pointer still in edge list (vector)
-	// e = nullptr;
+	SetLoop(he1->prev, l1);
+
+	delete edge_[e]->half_edge[0];
+	delete edge_[e]->half_edge[1];
+	delete edge_[e]; // edge memory deleted, pointer still in edge list (vector)
+	edge_[e] = nullptr;
 }
 
-void Mesher::KfMrh(Face *&f) {
-	delete f;
-	// f = nullptr;
+void Mesher::KfMrh(int f0, int f1) {
+	AddLoop(f0, face_[f1]->loop);
+	delete face_[f1];
+	face_[f1] = nullptr;
 }
 
-void Mesher::Sweep(Face *f, glm::vec3 d, float t) {
+void Mesher::Sweep(int f, glm::vec3 d, float t) {
 	d = glm::normalize(d) * t;
-	Loop *l = f->loop;
+	Loop *l = face_[f]->loop;
+	int f_outer = l->half_edge->twin->loop->face;
 	do {
 		HalfEdge *he = l->half_edge;
-		Vertex *v_init = Mve(he->vertex->position + d, he->vertex, l);
-		Vertex *v_prev = v_init;
+		Loop *l_twin = he->twin->loop;
+		int v_init = Mve(vertex_[he->vertex]->position + d, he->vertex, l_twin);
+		int v_prev = v_init;
 		he = he->next;
 		do {
-			Vertex *v_next = Mve(he->vertex->position + d, he->vertex, l);
-			Mef(v_prev, v_next,l);
+			int v_next = Mve(vertex_[he->vertex]->position + d, he->vertex, l_twin);
+			Mef(v_next, v_prev, l_twin);
 			v_prev = v_next;
 			he = he->next;
 		} while(he != l->half_edge);
-		Mef(v_prev, v_init, l);
-		if(l != f->loop) KfMrh(l->face);
+		Mef(v_init, v_prev, l_twin);
+
+		if(l != face_[f]->loop) KfMrh(f_outer, l_twin->face);
 		l = l->next;
-	} while(l != f->loop);
+	} while(l != face_[f]->loop);
 }
 
 void Mesher::Build() {
 	for(unsigned int i = 0; i < operator_.size(); i++) {
-		// printf("o%02d\n", i);
+		// printf("o%-2d\n", i);
 		switch(operator_[i]->op) {
 			case Euler_Mvfs: {
-				auto e = static_cast<EulerMvfs*>(operator_[i]);
-				Mvfs(e->p);
+				auto o = static_cast<EulerMvfs*>(operator_[i]);
+				Mvfs(o->p);
 				break;
 			}
 			case Euler_Mve: {
-				auto e = static_cast<EulerMve*>(operator_[i]);
-				Mve(e->p, vertex_[e->v0], face_[e->f]);
+				auto o = static_cast<EulerMve*>(operator_[i]);
+				Mve(o->p, o->v0, o->f);
 				break;
 			}
 			case Euler_Mef: {
-				auto e = static_cast<EulerMef*>(operator_[i]);
-				Mef(vertex_[e->v0], vertex_[e->v1], face_[e->f0]);
+				auto o = static_cast<EulerMef*>(operator_[i]);
+				Mef(o->v0, o->v1, o->f0);
 				break;
 			}
 			case Euler_KeMr: {
-				auto e = static_cast<EulerKeMr*>(operator_[i]);
-				KeMr(edge_[e->e], face_[e->f]);
+				auto o = static_cast<EulerKeMr*>(operator_[i]);
+				KeMr(o->e, o->f);
 				break;
 			}
 			case Euler_KfMrh: {
-				// auto e = static_cast<EulerKfMrh*>(operator_[i]);
-				// KfMrh(e->p);
+				auto o = static_cast<EulerKfMrh*>(operator_[i]);
+				KfMrh(o->f0, o->f1);
+				break;
+			}
+			case Op_Sweep: {
+				auto o = static_cast<OpSweep*>(operator_[i]);
+				Sweep(o->f, o->d, o->t);
 				break;
 			}
 		}
 	}
 }
 
-void Mesher::PrintFace() {
-	Face *face;
-	for(unsigned int f_i = 0; f_i < face_.size(); f_i++) {
-		if(!face_[f_i]) continue;
-		face = face_[f_i];
-		Loop *l = face->loop;
-		int l_i = 0;
+std::vector<unsigned int> Mesher::TriangulateFace(int f) {
+	std::vector<std::vector<glm::vec3>> polygon;
+	if(!face_[f]) return std::move(std::vector<unsigned int>());
+	Loop *l = face_[f]->loop;
+	do {
+		std::vector<glm::vec3> contour;
+		HalfEdge *he = l->half_edge;
 		do {
-			HalfEdge *he = l->half_edge;
-			int he_i = 0;
-			do {
-				glm::vec3 &v =  he->vertex->position;
-				printf("f%d l%d he%d: %g %g %g\n", f_i, l_i, he_i, v.x, v.y, v.z);
-				he = he->next;
-				he_i++;
-			} while(he != l->half_edge);
-			l = l->next;
-			l_i++;
-		} while(l != face->loop);
+			contour.push_back(vertex_[he->vertex]->position);
+			he = he->next;
+		} while(he != l->half_edge);
+		l = l->next;
+		polygon.push_back(contour);
+		// triangel_vertex_ += contour;
+	} while(l != face_[f]->loop);
+	std::vector<unsigned int> index = mapbox::earcut<unsigned int>(polygon);
+	return std::move(index);
+}
+
+void Mesher::Triangulate() {
+	for(unsigned int i = 0; i < 1; i++)
+		vertex_index_ += TriangulateFace(i);
+	// normal_.reserve();
+	for(unsigned int i = 0; i < vertex_index_.size(); i += 3) {
+		cout << vertex_index_[i] << " " << vertex_index_[i + 1] << " " << vertex_index_[i + 2] << endl;
 	}
+// normal_
+}
+
+void Mesher::PrintFace(int f_i) {
+	if(!face_[f_i]) return;
+	Face *f_p = face_[f_i];
+	Loop *l = f_p->loop;
+	int l_i = 0;
+	do {
+		HalfEdge *he = l->half_edge;
+		int he_i = 0;
+		do {
+			int v_i = he->vertex;
+			glm::vec3 &v = vertex_[v_i]->position;
+			printf("f%-2d l%-2d he%-2d v%-2d: %g %g %g\n", f_i, l_i, he_i, v_i, v.x, v.y, v.z);
+			he = he->next;
+			he_i++;
+		} while(he != l->half_edge);
+		l = l->next;
+		l_i++;
+	} while(l != f_p->loop);
+}
+
+void Mesher::Print() {
+	for(unsigned int f_i = 0; f_i < face_.size(); f_i++)
+		PrintFace(f_i);
+}
+
+void Mesher::PrintLoop(Loop *l) {
+	HalfEdge *he = l->half_edge;
+	int he_i = 0;
+	do {
+		int v_i = he->vertex;
+		glm::vec3 &v = vertex_[v_i]->position;
+		printf("he%-2d v%-2d: %g %g %g\n", he_i, v_i, v.x, v.y, v.z);
+		he = he->next;
+		he_i++;
+	} while(he != l->half_edge);
+	l = l->next;
 }
 
 }

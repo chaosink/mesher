@@ -15,7 +15,8 @@ int main(int argc, char *argv[]) {
 	mesh.LoadOperator(argv[1]);
 	mesh.SaveOperator("save.op");
 	mesh.Build();
-	mesh.PrintFace();
+	mesh.Print();
+	mesh.Triangulate();
 
 	return 0;
 }
