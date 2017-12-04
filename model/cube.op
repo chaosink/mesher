@@ -10,3 +10,5 @@ Mve    1  1  2  5  0    # v6( 1  1  2)  v5  f1    # v6  e6
 Mve   -1  1  2  6  0    # v7(-1  1  2)  v6  f1    # v7  e7
 Mef    4  7  0          # v4  v7  f1              #     e8  f2
 KeMr   4  0             # e4  f0                  #    -e4
+
+Sweep  0  0 -1  4

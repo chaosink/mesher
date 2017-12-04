@@ -12,8 +12,8 @@ int main(int argc, char *argv[]) {
 	}
 
 	Mesher mesh;
-	mesh.LoadEuler(argv[1]);
-	mesh.SaveEuler("save.euler");
+	mesh.LoadOperator(argv[1]);
+	mesh.SaveOperator("save.op");
 	mesh.Build();
 	mesh.PrintFace();
 
