@@ -106,10 +106,10 @@ struct HalfEdge {
 struct Vertex {
 	// Vertex *prev, *next;
 
-	glm::vec3 position;
+	glm::dvec3 position;
 	// glm::vec3 normal;
 
-	Vertex(glm::vec3 position) : position(position) {}
+	Vertex(glm::dvec3 position) : position(position) {}
 };
 
 class Mesher {
@@ -121,9 +121,7 @@ class Mesher {
 	std::vector<Vertex*> vertex_;
 
 	std::vector<glm::vec3> triangel_vertex_;
-	std::vector<unsigned int> vertex_index_;
 	std::vector<glm::vec3> triangel_normal_;
-	std::vector<unsigned int> normal_index_;
 
 	bool InLoop(int v, Loop *l);
 	void AddLoop(int f, Loop *l1);
@@ -135,17 +133,23 @@ class Mesher {
 	void Mef(int v0, int v1, int f0);
 	void KeMr(int e, int f);
 	void KfMrh(int f0, int f1);
-	void Sweep(int f, glm::vec3 d, float t);
+	void Sweep(int f, glm::dvec3 d, double t);
 
 public:
 	void LoadOperator(const char *file);
 	void SaveOperator(const char *file);
 	void Build();
-	void Triangulate();
-	std::vector<unsigned int> TriangulateFace(int f);
+	std::vector<glm::vec3> &Triangulate();
+	std::vector<glm::vec3> TriangulateFace(int f);
 	void PrintFace(int f);
 	void Print();
 	void PrintLoop(Loop *l);
+	std::vector<glm::vec3> &triangel_vertex() {
+		return triangel_vertex_;
+	}
+	std::vector<glm::vec3> &triangel_normal() {
+		return triangel_normal_;
+	}
 };
 
 }

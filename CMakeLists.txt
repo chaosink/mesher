@@ -9,6 +9,7 @@ find_package(OpenGL REQUIRED)
 
 include_directories(
 	src/core
+	src/utility
 	src/thirdparty/glew-2.1.0/include
 	src/thirdparty/glfw-3.2.1/include
 	src/thirdparty/glm-0.9.8.5
@@ -27,8 +28,10 @@ target_link_libraries(mesher
 	core
 	glew_s
 	glfw
-	${CUDA_LIBRARIES}
 )
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/shader/vertex.glsl ${CMAKE_CURRENT_BINARY_DIR}/shader/vertex.glsl COPYONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/shader/fragment.glsl ${CMAKE_CURRENT_BINARY_DIR}/shader/fragment.glsl COPYONLY)
 
 
 

@@ -2,35 +2,12 @@
 
 #include <fstream>
 #include <string>
-#include <iostream>
-using namespace std;
 
-#include "mapbox/earcut.hpp"
-
-#define D cout << "here" << endl;
-
-namespace mapbox {
-namespace util {
-template <>
-struct nth<0, glm::vec3> {
-	inline static auto get(const glm::vec3 &t) {
-		return t.x;
-	};
-};
-template <>
-struct nth<1, glm::vec3> {
-	inline static auto get(const glm::vec3 &t) {
-		return t.y;
-	};
-};
-template <>
-struct nth<2, glm::vec3> {
-	inline static auto get(const glm::vec3 &t) {
-		return t.z;
-	};
-};
-} // namespace util
-} // namespace mapbox
+#if defined __APPLE__
+#include <OpenGL/glu.h>
+#else
+#include <GL/glu.h>
+#endif
 
 template <typename T>
 std::vector<T> operator+(const std::vector<T> &v0, const std::vector<T> &v1) {
@@ -297,7 +274,7 @@ void Mesher::KfMrh(int f0, int f1) {
 	face_[f1] = nullptr;
 }
 
-void Mesher::Sweep(int f, glm::vec3 d, float t) {
+void Mesher::Sweep(int f, glm::dvec3 d, double t) {
 	d = glm::normalize(d) * t;
 	Loop *l = face_[f]->loop;
 	int f_outer = l->half_edge->twin->loop->face;
@@ -322,7 +299,6 @@ void Mesher::Sweep(int f, glm::vec3 d, float t) {
 
 void Mesher::Build() {
 	for(unsigned int i = 0; i < operator_.size(); i++) {
-		// printf("o%-2d\n", i);
 		switch(operator_[i]->op) {
 			case Euler_Mvfs: {
 				auto o = static_cast<EulerMvfs*>(operator_[i]);
@@ -358,33 +334,78 @@ void Mesher::Build() {
 	}
 }
 
-std::vector<unsigned int> Mesher::TriangulateFace(int f) {
-	std::vector<std::vector<glm::vec3>> polygon;
-	if(!face_[f]) return std::move(std::vector<unsigned int>());
+GLenum primitive_type;
+void TessBeginCallback(GLenum type) {
+	primitive_type = type;
+}
+
+std::vector<glm::vec3> vertex_temp;
+void TessVertexCallback(void *data) {
+	double *vertex = (GLdouble*)data;
+	vertex_temp.push_back(glm::vec3(vertex[0], vertex[1], vertex[2]));
+}
+
+std::vector<glm::vec3> triangle_vertex;
+void TessEndCallback() {
+	if(primitive_type == GL_TRIANGLE_FAN) {
+		for(unsigned int i = 1; i < vertex_temp.size(); i += 2) {
+			triangle_vertex.push_back(vertex_temp[0]);
+			triangle_vertex.push_back(vertex_temp[i]);
+			triangle_vertex.push_back(vertex_temp[i + 1]);
+		}
+	} else if(primitive_type == GL_TRIANGLE_STRIP) {
+		for(unsigned int i = 0; i < vertex_temp.size() - 2; i++) {
+			triangle_vertex.push_back(vertex_temp[i + 0]);
+			triangle_vertex.push_back(vertex_temp[i + 1]);
+			triangle_vertex.push_back(vertex_temp[i + 2]);
+		}
+	} else {
+		triangle_vertex += vertex_temp;
+	}
+	vertex_temp.clear();
+}
+
+std::vector<glm::vec3> Mesher::TriangulateFace(int f) {
+	triangle_vertex.clear();
+	if(!face_[f]) return std::move(triangle_vertex);
+
+	GLUtesselator *tess = gluNewTess();
+	gluTessCallback(tess, GLU_TESS_BEGIN, (void(*)())TessBeginCallback);
+	gluTessCallback(tess, GLU_TESS_VERTEX, (void(*)())TessVertexCallback);
+	gluTessCallback(tess, GLU_TESS_END, (void(*)())TessEndCallback);
+	gluTessBeginPolygon(tess, 0);
 	Loop *l = face_[f]->loop;
 	do {
-		std::vector<glm::vec3> contour;
+		gluTessBeginContour(tess);
 		HalfEdge *he = l->half_edge;
 		do {
-			contour.push_back(vertex_[he->vertex]->position);
+			double *p = (double*)&vertex_[he->vertex]->position;
+			gluTessVertex(tess, p, p);
 			he = he->next;
 		} while(he != l->half_edge);
 		l = l->next;
-		polygon.push_back(contour);
-		// triangel_vertex_ += contour;
+		gluTessEndContour(tess);
 	} while(l != face_[f]->loop);
-	std::vector<unsigned int> index = mapbox::earcut<unsigned int>(polygon);
-	return std::move(index);
+	gluTessEndPolygon(tess);
+	gluDeleteTess(tess);
+
+	return std::move(triangle_vertex);
 }
 
-void Mesher::Triangulate() {
-	for(unsigned int i = 0; i < 1; i++)
-		vertex_index_ += TriangulateFace(i);
-	// normal_.reserve();
-	for(unsigned int i = 0; i < vertex_index_.size(); i += 3) {
-		cout << vertex_index_[i] << " " << vertex_index_[i + 1] << " " << vertex_index_[i + 2] << endl;
-	}
-// normal_
+std::vector<glm::vec3> &Mesher::Triangulate() {
+	triangel_vertex_.clear();
+	for(unsigned int i = 0; i < face_.size(); i++)
+		triangel_vertex_ += TriangulateFace(i);
+
+	triangel_normal_.resize(triangel_vertex_.size());
+	for(unsigned int i = 0; i < triangel_normal_.size(); i += 3)
+		triangel_normal_[i + 0] =
+		triangel_normal_[i + 1] =
+		triangel_normal_[i + 2] = glm::normalize(glm::cross(
+			triangel_vertex_[i + 2] - triangel_vertex_[i + 1],
+			triangel_vertex_[i + 1] - triangel_vertex_[i + 0]));
+
+	return triangel_vertex_;
 }
 
 void Mesher::PrintFace(int f_i) {
@@ -397,7 +418,7 @@ void Mesher::PrintFace(int f_i) {
 		int he_i = 0;
 		do {
 			int v_i = he->vertex;
-			glm::vec3 &v = vertex_[v_i]->position;
+			glm::dvec3 &v = vertex_[v_i]->position;
 			printf("f%-2d l%-2d he%-2d v%-2d: %g %g %g\n", f_i, l_i, he_i, v_i, v.x, v.y, v.z);
 			he = he->next;
 			he_i++;
@@ -417,7 +438,7 @@ void Mesher::PrintLoop(Loop *l) {
 	int he_i = 0;
 	do {
 		int v_i = he->vertex;
-		glm::vec3 &v = vertex_[v_i]->position;
+		glm::dvec3 &v = vertex_[v_i]->position;
 		printf("he%-2d v%-2d: %g %g %g\n", he_i, v_i, v.x, v.y, v.z);
 		he = he->next;
 		he_i++;
