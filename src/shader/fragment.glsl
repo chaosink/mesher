@@ -9,28 +9,33 @@ uniform mat4 mv;
 
 out vec3 color;
 
-vec3 Lighting(vec3 light_position, float LightPower, int light_n) {
-	vec3 LightColor = vec3(1.f, 1.f, 1.f);
+// Blinn-Phong shading
+vec3 Lighting(vec3 light_position, float light_power, int light_n) {
+	vec3 light_color = vec3(1.f, 1.f, 1.f);
 
-	vec3 MaterialDiffuseColor = vec3(0.9f, 0.3f, 0.3f);
-	vec3 MaterialAmbientColor = vec3(0.4f, 0.4f, 0.4f) * MaterialDiffuseColor;
-	vec3 MaterialSpecularColor = vec3(0.3f, 0.3f, 0.3f);
+	const vec3 diffuse_color  = vec3(0.9f, 0.3f, 0.3f);
+	const vec3 ambient_color  = vec3(0.4f, 0.4f, 0.4f) * diffuse_color;
+	const vec3 specular_color = vec3(0.3f, 0.3f, 0.3f);
+	const float shininess = 16.0;
 
 	vec3 light_direction = light_position - vertexIn.position;
 	float distance = length(light_direction);
+	distance *= distance;
 
-	vec3 n = normalize(vertexIn.normal);
-	vec3 l = normalize(light_direction);
-	float cosTheta = clamp(dot(n, l), 0.f, 1.f);
+	light_direction = normalize(light_direction);
+	vec3 normal = normalize(vertexIn.normal);
+	float cos_theta = clamp(dot(normal, light_direction), 0.f, 1.f);
+	float lambertian = clamp(cos_theta, 0.f, 1.f);
 
-	vec3 E = normalize(-vertexIn.position);
-	vec3 R = reflect(-l, n);
-	float cosAlpha = clamp(dot(E, R), 0.f, 1.f);
+	vec3 eye_direction = normalize(-vertexIn.position);
+	vec3 half_direction = normalize(light_direction + eye_direction);
+	float cos_alpha = dot(half_direction, normal);
+	float specular = pow(clamp(cos_alpha, 0.f, 1.f), shininess);
 
 	color =
-		MaterialAmbientColor / light_n +
-		MaterialDiffuseColor * LightColor * LightPower * cosTheta / (distance * distance) +
-		MaterialSpecularColor * LightColor * LightPower * pow(cosAlpha, 5.f) / (distance * distance);
+		ambient_color / light_n +
+		diffuse_color * lambertian * light_color * light_power / distance +
+		specular_color * specular  * light_color * light_power / distance;
 
 	return color;
 }
