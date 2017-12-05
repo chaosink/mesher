@@ -1,6 +1,8 @@
 # Mesher
 
-A mesh editor.
+A mesh editor based on Euler operators and half-edge data structure.
+
+Uncompleted...
 
 # Results
 
