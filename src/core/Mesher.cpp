@@ -3,6 +3,13 @@
 #include <fstream>
 #include <string>
 
+#ifdef _WIN32
+#include <windows.h>
+#define CALLBACK __stdcall
+#else
+#define CALLBACK
+#endif
+
 #ifdef __APPLE__
 #include <OpenGL/glu.h>
 #else
@@ -390,9 +397,9 @@ std::vector<glm::vec3> Mesher::TriangulateFace(int f) {
 	if(!face_[f]) return std::move(triangle_vertex);
 
 	GLUtesselator *tess = gluNewTess();
-	gluTessCallback(tess, GLU_TESS_BEGIN, (void(*)())TessBeginCallback);
-	gluTessCallback(tess, GLU_TESS_VERTEX, (void(*)())TessVertexCallback);
-	gluTessCallback(tess, GLU_TESS_END, (void(*)())TessEndCallback);
+	gluTessCallback(tess, GLU_TESS_BEGIN, (void(CALLBACK*)())TessBeginCallback);
+	gluTessCallback(tess, GLU_TESS_VERTEX, (void(CALLBACK*)())TessVertexCallback);
+	gluTessCallback(tess, GLU_TESS_END, (void(CALLBACK*)())TessEndCallback);
 	gluTessBeginPolygon(tess, 0);
 	Loop *l = face_[f]->loop;
 	do {
