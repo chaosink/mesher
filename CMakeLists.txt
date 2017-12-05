@@ -1,8 +1,7 @@
 cmake_minimum_required(VERSION 3.0.0 FATAL_ERROR)
-project(mesher VERSION 0.1.0 LANGUAGES CXX)
+project(mesher LANGUAGES CXX)
 
-
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 11)
 list(APPEND CMAKE_CXX_FLAGS " -Wall -O3 ")
 
 find_package(OpenGL REQUIRED)
@@ -13,7 +12,6 @@ include_directories(
 	src/thirdparty/glew-2.1.0/include
 	src/thirdparty/glfw-3.2.1/include
 	src/thirdparty/glm-0.9.8.5
-	src/thirdparty/earcut.hpp/include
 	${OPENGL_INCLUDE_DIR}
 )
 

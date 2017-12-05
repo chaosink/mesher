@@ -1,21 +1,60 @@
 #include "OGL.hpp"
 
-#include <cstdio>
 #include <vector>
 #include <string>
 #include <fstream>
 
-OGL::OGL() {
+OGL::~OGL() {
+	glDeleteBuffers(1, &vertex_buffer_);
+	glDeleteBuffers(1, &normal_buffer_);
+	glDeleteVertexArrays(1, &vertex_array_);
+	glDeleteProgram(shader_);
+	glfwDestroyWindow(window_);
+	glfwTerminate();
+}
+
+GLFWwindow* OGL::InitGLFW(const char *window_title, int window_w, int window_h) {
+	window_w_ = window_w;
+	window_h_ = window_h;
+
+	if(!glfwInit()) exit(EXIT_FAILURE);
+	glfwWindowHint(GLFW_SAMPLES, 4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+	glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+
+	window_ = glfwCreateWindow(window_w_, window_h_, window_title, NULL, NULL);
+	if(!window_) {
+		glfwTerminate();
+		exit(EXIT_FAILURE);
+	}
+	glfwMakeContextCurrent(window_);
+
+	glewExperimental = true; // Needed for core profile
+	if(glewInit() != GLEW_OK) {
+		glfwTerminate();
+		fprintf(stderr, "Failed to initialize GLEW\n");
+		exit(EXIT_FAILURE);
+	}
+
+	glfwSwapInterval(1);
+	return window_;
+}
+
+void OGL::InitGL(const char *vertex_file_path, const char *fragment_file_path, const char *geometry_file_path) {
 	glClearColor(0.08f, 0.16f, 0.24f, 1.f);
 	// glEnable(GL_BLEND);
 	// glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
 	glEnable(GL_CULL_FACE);
-}
 
-OGL::~OGL() {
-	glDeleteProgram(shader_);
+	LoadShader(vertex_file_path, fragment_file_path, geometry_file_path);
+
+	glGenVertexArrays(1, &vertex_array_);
+	glBindVertexArray(vertex_array_);
 }
 
 GLuint OGL::LoadShaderFromString(const char *vertex_string, const char *fragment_string, const char *geometry_string) {
@@ -143,10 +182,55 @@ void OGL::LoadShader(const char *vertex_file_path, const char *fragment_file_pat
 	mv_ = glGetUniformLocation(shader_, "mv");
 }
 
+void OGL::Vertex(std::vector<glm::vec3> &vertex) {
+	glGenBuffers(1, &vertex_buffer_);
+	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * vertex.size(), vertex.data(), GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(
+		0,        // index
+		3,        // size
+		GL_FLOAT, // type
+		GL_FALSE, // normalized
+		0,        // stride
+		(void*)0  // pointer
+	);
+	n_vertex_ = vertex.size();
+}
+
+void OGL::Normal(std::vector<glm::vec3> &normal) {
+	glGenBuffers(1, &normal_buffer_);
+	glBindBuffer(GL_ARRAY_BUFFER, normal_buffer_);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * normal.size(), normal.data(), GL_STATIC_DRAW);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(
+		1,        // index
+		3,        // size
+		GL_FLOAT, // type
+		GL_FALSE, // normalized
+		0,        // stride
+		(void*)0  // pointer
+	);
+}
+
 void OGL::MVP(glm::mat4 mvp) {
 	glUniformMatrix4fv(mvp_, 1, GL_FALSE, &mvp[0][0]);
 }
 
 void OGL::MV(glm::mat4 mv) {
 	glUniformMatrix4fv(mv_, 1, GL_FALSE, &mv[0][0]);
+}
+
+bool OGL::Alive() {
+	return glfwGetKey(window_, GLFW_KEY_ESCAPE) != GLFW_PRESS && !glfwWindowShouldClose(window_);
+}
+
+void OGL::Clear(GLenum bit) {
+	glClear(bit);
+}
+
+void OGL::Update() {
+	glDrawArrays(GL_TRIANGLES, 0, n_vertex_);
+	glfwSwapBuffers(window_);
+	glfwPollEvents();
 }

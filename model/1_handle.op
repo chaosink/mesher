@@ -1,0 +1,14 @@
+Mvfs  (-2 -2  1)          #  v0       f0
+Mve   ( 2 -2  1)  v0  f0  #  v1   e0
+Mve   ( 2  2  1)  v1  f0  #  v2   e1
+Mve   (-2  2  1)  v2  f0  #  v3   e2
+Mef    v3  v0  f0         #       e3  f1
+
+Mve   (-1 -1  1)  v0  f0  #  v4   e4
+Mve   ( 1 -1  1)  v4  f0  #  v5   e5
+Mve   ( 1  1  1)  v5  f0  #  v6   e6
+Mve   (-1  1  1)  v6  f0  #  v7   e7
+Mef    v4  v7  f0         #       e8  f2
+KeMr   e4  f0             #      -e4
+
+Sweep  f0  ( 0  0 -1)  4

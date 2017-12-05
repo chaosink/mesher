@@ -3,11 +3,13 @@
 #include <fstream>
 #include <string>
 
-#if defined __APPLE__
+#ifdef __APPLE__
 #include <OpenGL/glu.h>
 #else
 #include <GL/glu.h>
 #endif
+
+namespace mesher {
 
 template <typename T>
 std::vector<T> operator+(const std::vector<T> &v0, const std::vector<T> &v1) {
@@ -25,77 +27,82 @@ std::vector<T> &operator+=(std::vector<T> &v0, const std::vector<T> &v1) {
 	return v0;
 }
 
-namespace mesher {
-
 void Mesher::LoadOperator(const char *file) {
 	std::ifstream ifs(file);
 	std::string op;
 	float x, y, z, t;
 	int n0, n1, n2;
+	char c;
 
 	while(ifs >> op) {
 		if(op[0] == '#') {
 			ifs.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 		} else if(op == "Mvfs") {
+			ifs.ignore(std::numeric_limits<std::streamsize>::max(), '(');
 			ifs >> x >> y >> z;
 			operator_.push_back(new EulerMvfs(x, y, z));
+			ifs.ignore(std::numeric_limits<std::streamsize>::max(), ')');
 		} else if(op == "Mve") {
-			ifs >> x >> y >> z >> n0 >> n1;
+			ifs.ignore(std::numeric_limits<std::streamsize>::max(), '(');
+			ifs >> x >> y >> z;
+			ifs.ignore(std::numeric_limits<std::streamsize>::max(), ')');
+			ifs >> c >> n0 >> c >> n1;
 			operator_.push_back(new EulerMve(x, y, z, n0, n1));
 		} else if(op == "Mef") {
-			ifs >> n0 >> n1 >> n2;
+			ifs >> c >> n0 >> c >> n1 >> c >> n2;
 			operator_.push_back(new EulerMef(n0, n1, n2));
 		} else if(op == "KeMr") {
-			ifs >> n0 >> n1;
+			ifs >> c >> n0 >> c >> n1;
 			operator_.push_back(new EulerKeMr(n0, n1));
 		} else if(op == "KfMrh") {
 
 		} else if(op == "Sweep") {
-			ifs >> n0 >> x >> y >> z >> t;
+			ifs >> c >> n0;
+			ifs.ignore(std::numeric_limits<std::streamsize>::max(), '(');
+			ifs >> x >> y >> z;
+			ifs.ignore(std::numeric_limits<std::streamsize>::max(), ')');
+			ifs >> t;
 			operator_.push_back(new OpSweep(n0, x, y, z, t));
 		}
 	}
-
 	ifs.close();
 }
 
 void Mesher::SaveOperator(const char *file) {
 	FILE *f = fopen(file, "w");
-
 	for(auto op: operator_) {
 		switch(op->op) {
 			case Euler_Mvfs: {
 				auto o = static_cast<EulerMvfs*>(op);
-				fprintf(f, "Mvfs %f %f %f\n", o->p.x, o->p.y, o->p.z);
+				fprintf(f, "Mvfs (%f %f %f)\n", o->p.x, o->p.y, o->p.z);
 				break;
 			}
 			case Euler_Mve: {
 				auto o = static_cast<EulerMve*>(op);
-				fprintf(f, "Mve %f %f %f %d %d\n", o->p.x, o->p.y, o->p.z, o->v0, o->f);
+				fprintf(f, "Mve (%f %f %f) v%d f%d\n", o->p.x, o->p.y, o->p.z, o->v0, o->f);
 				break;}
 			case Euler_Mef: {
 				auto o = static_cast<EulerMef*>(op);
-				fprintf(f, "Mef %d %d %d\n", o->v0, o->v1, o->f0);
+				fprintf(f, "Mef v%d v%d f%d\n", o->v0, o->v1, o->f0);
 				break;
 			}
 			case Euler_KeMr: {
 				auto o = static_cast<EulerKeMr*>(op);
-				fprintf(f, "KeMr %d %d\n", o->e, o->f);
+				fprintf(f, "KeMr e%d f%d\n", o->e, o->f);
 				break;
 			}
 			case Euler_KfMrh: {
 				auto o = static_cast<EulerKfMrh*>(op);
-				fprintf(f, "KfMrh %d %d\n", o->f0, o->f1);
+				fprintf(f, "KfMrh f%d f%d\n", o->f0, o->f1);
 				break;
 			}
 			case Op_Sweep: {
 				auto o = static_cast<OpSweep*>(op);
-				fprintf(f, "Sweep %d %f %f %f %f\n", o->f, o->d.x, o->d.y, o->d.z, o->t);
+				fprintf(f, "Sweep f%d (%f %f %f) %f\n", o->f, o->d.x, o->d.y, o->d.z, o->t);
 				break;
 			}
 		}
 	}
-
 	fclose(f);
 }
 
