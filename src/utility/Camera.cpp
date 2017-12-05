@@ -4,7 +4,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 static double scoll = 0;
-static void ScrollCallback(GLFWwindow* window, double x, double y) {
+static void ScrollCallback(GLFWwindow* /*window*/, double /*x*/, double y) {
 	scoll = y;
 }
 
@@ -37,17 +37,18 @@ Camera::Camera(GLFWwindow *window, int window_w, int window_h, double time)
 glm::mat4 Camera::Update(double time) {
 	fix_.Update([this]{ // call this lambda when toggle `fix_` turn on
 		vp_ = glm::mat4(
-			1.187824, -0.546560, -0.429420, -0.428562,
-			0.000000, 2.134668, -0.468028, -0.467093,
-			-0.658199, -0.986354, -0.774956, -0.773407,
-			0.029338, 0.094435, 3.050498, 3.244203
+			1.196924, 0.562701, 0.411706, 0.410883,
+			0.000000, 2.099883, -0.494392, -0.493404,
+			0.641501, -1.049898, -0.768168, -0.766634,
+			0.237233, -0.005142, 2.940655, 3.134580
 		);
 		v_ = glm::mat4(
-			0.874689, -0.226393, 0.428562, 0.000000,
-			0.000000, 0.884208, 0.467093, 0.000000,
-			-0.484684, -0.408561, 0.773407, 0.000000,
-			0.021604, 0.039116, -3.244203, 1.000000
+			0.881391, 0.233078, -0.410883, 0.000000,
+			0.000000, 0.869800, 0.493404, 0.000000,
+			0.472388, -0.434882, 0.766634, 0.000000,
+			0.174693, -0.002130, -3.134580, 1.000000
 		);
+
 	}, [this]{ // call this lambda when toggle `fix_` turn off
 		glfwGetCursorPos(window_, &x_, &y_);
 	});

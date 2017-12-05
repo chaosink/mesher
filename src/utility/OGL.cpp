@@ -20,7 +20,7 @@ GLFWwindow* OGL::InitGLFW(const char *window_title, int window_w, int window_h) 
 	if(!glfwInit()) exit(EXIT_FAILURE);
 	glfwWindowHint(GLFW_SAMPLES, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 	glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
@@ -39,7 +39,7 @@ GLFWwindow* OGL::InitGLFW(const char *window_title, int window_w, int window_h) 
 		exit(EXIT_FAILURE);
 	}
 
-	glfwSwapInterval(1);
+	// glfwSwapInterval(1);
 	return window_;
 }
 
