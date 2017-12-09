@@ -1,6 +1,7 @@
 #include "Mesher.hpp"
 
 #include <fstream>
+#include <iostream>
 #include <string>
 
 #ifdef _WIN32
@@ -19,7 +20,7 @@
 namespace mesher {
 
 template <typename T>
-std::vector<T> operator+(const std::vector<T> &v0, const std::vector<T> &v1) {
+std::vector<T> operator+(const std::vector<T> &v0, const std::vector<T> &v1) { // useless now
 	std::vector<T> v;
 	v.reserve(v0.size() + v1.size());
 	v.insert(v.end(), v0.begin(), v0.end());
@@ -62,7 +63,8 @@ void Mesher::LoadOperator(const char *file) {
 			ifs >> c >> n0 >> c >> n1;
 			operator_.push_back(new EulerKeMr(n0, n1));
 		} else if(op == "KfMrh") {
-
+			ifs >> n0 >> n1;
+			operator_.push_back(new EulerKfMrh(n0, n1));
 		} else if(op == "Sweep") {
 			ifs >> c >> n0;
 			ifs.ignore(std::numeric_limits<std::streamsize>::max(), '(');
@@ -76,41 +78,15 @@ void Mesher::LoadOperator(const char *file) {
 }
 
 void Mesher::SaveOperator(const char *file) {
-	FILE *f = fopen(file, "w");
-	for(auto op: operator_) {
-		switch(op->op) {
-			case Euler_Mvfs: {
-				auto o = static_cast<EulerMvfs*>(op);
-				fprintf(f, "Mvfs (%f %f %f)\n", o->p.x, o->p.y, o->p.z);
-				break;
-			}
-			case Euler_Mve: {
-				auto o = static_cast<EulerMve*>(op);
-				fprintf(f, "Mve (%f %f %f) v%d f%d\n", o->p.x, o->p.y, o->p.z, o->v0, o->f);
-				break;}
-			case Euler_Mef: {
-				auto o = static_cast<EulerMef*>(op);
-				fprintf(f, "Mef v%d v%d f%d\n", o->v0, o->v1, o->f0);
-				break;
-			}
-			case Euler_KeMr: {
-				auto o = static_cast<EulerKeMr*>(op);
-				fprintf(f, "KeMr e%d f%d\n", o->e, o->f);
-				break;
-			}
-			case Euler_KfMrh: {
-				auto o = static_cast<EulerKfMrh*>(op);
-				fprintf(f, "KfMrh f%d f%d\n", o->f0, o->f1);
-				break;
-			}
-			case Op_Sweep: {
-				auto o = static_cast<OpSweep*>(op);
-				fprintf(f, "Sweep f%d (%f %f %f) %f\n", o->f, o->d.x, o->d.y, o->d.z, o->t);
-				break;
-			}
-		}
-	}
-	fclose(f);
+	std::ofstream ofs(file);
+	for(auto op: operator_)
+		ofs << op->ToString() << std::endl;
+	ofs.close();
+}
+
+void Mesher::PrintOperator() {
+	for(auto op: operator_)
+		std::cout << op->ToString() << std::endl;
 }
 
 bool Mesher::InLoop(int v, Loop *l) {
@@ -312,40 +288,8 @@ void Mesher::Sweep(int f, glm::dvec3 d, double t) {
 }
 
 void Mesher::Build() {
-	for(unsigned int i = 0; i < operator_.size(); i++) {
-		switch(operator_[i]->op) {
-			case Euler_Mvfs: {
-				auto o = static_cast<EulerMvfs*>(operator_[i]);
-				Mvfs(o->p);
-				break;
-			}
-			case Euler_Mve: {
-				auto o = static_cast<EulerMve*>(operator_[i]);
-				Mve(o->p, o->v0, o->f);
-				break;
-			}
-			case Euler_Mef: {
-				auto o = static_cast<EulerMef*>(operator_[i]);
-				Mef(o->v0, o->v1, o->f0);
-				break;
-			}
-			case Euler_KeMr: {
-				auto o = static_cast<EulerKeMr*>(operator_[i]);
-				KeMr(o->e, o->f);
-				break;
-			}
-			case Euler_KfMrh: {
-				auto o = static_cast<EulerKfMrh*>(operator_[i]);
-				KfMrh(o->f0, o->f1);
-				break;
-			}
-			case Op_Sweep: {
-				auto o = static_cast<OpSweep*>(operator_[i]);
-				Sweep(o->f, o->d, o->t);
-				break;
-			}
-		}
-	}
+	for(unsigned int i = 0; i < operator_.size(); i++)
+		operator_[i]->Execute(*this);
 }
 
 GLenum primitive_type;
