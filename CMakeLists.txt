@@ -24,7 +24,7 @@ add_library(core
 )
 
 add_executable(mesher
-	src/main.cpp
+	src/mesher/mesher.cpp
 	src/utility/Camera.cpp
 	src/utility/FPS.cpp
 	src/utility/Toggle.cpp
