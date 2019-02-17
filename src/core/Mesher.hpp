@@ -63,6 +63,8 @@ struct Vertex {
 	glm::dvec3 position;
 	// glm::vec3 normal;
 
+	bool border = false;
+
 	Vertex(glm::dvec3 position) : position(position) {}
 };
 
@@ -201,6 +203,7 @@ public:
 	std::vector<glm::vec3> &triangel_normal() {
 		return triangel_normal_;
 	}
+	void MarkBorder();
 };
 
 }

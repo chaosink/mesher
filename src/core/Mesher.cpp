@@ -106,6 +106,8 @@ void Mesher::AddLoop(int f, Loop *l1) {
 	l1->prev = l0;
 	l0->next->prev = l1;
 	l0->next = l1;
+
+	l1->face = f;
 }
 
 void Mesher::SetLoop(HalfEdge *he, Loop *l) {
@@ -292,6 +294,8 @@ void Mesher::Sweep(int f, glm::dvec3 d, double t) {
 void Mesher::Build() {
 	for(unsigned int i = 0; i < operator_.size(); i++)
 		operator_[i]->Execute(*this);
+
+	MarkBorder();
 }
 
 GLenum primitive_type;
@@ -418,6 +422,16 @@ void Mesher::PrintLoop(Loop *l) {
 		he_i++;
 	} while(he != l->half_edge);
 	l = l->next;
+}
+
+void Mesher::MarkBorder() {
+	for(const auto &e: edge_)
+		if(e && !vertex_[e->half_edge[0]->vertex]->border)
+			for(const auto &he: e->half_edge)
+				if(/*face_[he->loop->face] && */!face_[he->loop->face]->visualizable) {
+					vertex_[he->vertex]->border = true;
+					vertex_[he->twin->vertex]->border = true;
+				}
 }
 
 }
