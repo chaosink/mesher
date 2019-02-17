@@ -1,0 +1,42 @@
+Mvfs  (-5 -5  1)          #  v0       f0
+Mve   ( 5 -5  1)  v0  f0  #  v1   e0
+Mve   ( 5  5  1)  v1  f0  #  v2   e1
+Mve   (-5  5  1)  v2  f0  #  v3   e2
+Mef    v3  v0  f0         #       e3  f1
+
+Mve   (-1 -1  1)  v0  f0  #  v4   e4
+Mve   ( 1 -1  1)  v4  f0  #  v5   e5
+Mve   ( 1  1  1)  v5  f0  #  v6   e6
+Mve   (-1  1  1)  v6  f0  #  v7   e7
+Mef    v4  v7  f0         #       e8  f2
+KeMr   e4  f0             #      -e4
+
+Mve   (-4 -4  1)  v0  f0  #  v8   e9
+Mve   (-2 -4  1)  v8  f0  #  v9  e10
+Mve   (-2 -2  1)  v9  f0  # v10  e11
+Mve   (-4 -2  1) v10  f0  # v11  e12
+Mef    v8 v11  f0         #      e13  f3
+KeMr   e9  f0             #      -e9
+
+Mve   ( 2 -4  1)  v0  f0  # v12  e14
+Mve   ( 4 -4  1) v12  f0  # v13  e15
+Mve   ( 4 -2  1) v13  f0  # v14  e16
+Mve   ( 2 -2  1) v14  f0  # v15  e17
+Mef   v12 v15  f0         #      e18  f4
+KeMr  e14  f0             #     -e14
+
+Mve   ( 2  2  1)  v0  f0  # v16  e19
+Mve   ( 4  2  1) v16  f0  # v17  e20
+Mve   ( 4  4  1) v17  f0  # v18  e21
+Mve   ( 2  4  1) v18  f0  # v19  e22
+Mef   v16 v19  f0         #      e23  f5
+KeMr  e19  f0             #     -e19
+
+Mve   (-4  2  1)  v0  f0  # v20  e24
+Mve   (-2  2  1) v20  f0  # v21  e25
+Mve   (-2  4  1) v21  f0  # v22  e26
+Mve   (-4  4  1) v22  f0  # v23  e27
+Mef   v20 v23  f0         #      e28  f6
+KeMr  e24  f0             #     -e24
+
+#Sweep  f0  ( 0  0 -1)  4
