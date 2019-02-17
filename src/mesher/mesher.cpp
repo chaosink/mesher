@@ -32,6 +32,8 @@ int main(int argc, char *argv[]) {
 	ogl.Vertex(vertex);
 	ogl.Normal(normal);
 
+	Toggle render_mode(ogl.window(), GLFW_KEY_TAB, false);
+
 	double time = ogl.time();
 	Camera camera(ogl.window(), window_w, window_h, time);
 	FPS fps(time);
@@ -46,6 +48,14 @@ int main(int argc, char *argv[]) {
 		glm::mat4 v = camera.v();
 		glm::mat4 mv = v * m;
 		ogl.MV(mv);
+
+		render_mode.Update([&]() {
+			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+			glDisable(GL_CULL_FACE);
+		}, [&]() {
+			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+			glEnable(GL_CULL_FACE);
+		});
 
 		ogl.Update();
 		fps.Update(time);
