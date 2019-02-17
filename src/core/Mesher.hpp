@@ -32,6 +32,7 @@ struct Face {
 	Loop *loop;
 
 	// glm::vec3 normal;
+	bool visualizable = true;
 };
 struct Loop {
 	int face;

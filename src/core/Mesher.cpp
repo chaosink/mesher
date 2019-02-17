@@ -230,6 +230,7 @@ void Mesher::Mef(int v0, int v1, int f0) {
 		l0 = l0->next;
 	} while(l0 != face_[f0]->loop);
 	Mef(v0, v1, l0);
+	face_.back()->visualizable = false;
 }
 
 void Mesher::KeMr(int e, int f) {
@@ -285,6 +286,7 @@ void Mesher::Sweep(int f, glm::dvec3 d, double t) {
 		if(l != face_[f]->loop) KfMrh(f_outer, l_twin->face);
 		l = l->next;
 	} while(l != face_[f]->loop);
+	face_[f_outer]->visualizable = true;
 }
 
 void Mesher::Build() {
@@ -366,7 +368,8 @@ std::vector<glm::vec3> Mesher::TriangulateFace(int f) {
 std::vector<glm::vec3> &Mesher::Triangulate() {
 	triangel_vertex_.clear();
 	for(unsigned int i = 0; i < face_.size(); i++)
-		triangel_vertex_ += TriangulateFace(i);
+		if(face_[i] && face_[i]->visualizable)
+			triangel_vertex_ += TriangulateFace(i);
 
 	triangel_normal_.resize(triangel_vertex_.size());
 	for(unsigned int i = 0; i < triangel_normal_.size(); i += 3)
